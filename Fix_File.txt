@@ -1,0 +1,137 @@
+Sub AddDiskQuota()
+     'Macro purpose:  To add a reference to the project using the GUID for the reference library
+     
+    Dim strGUID As String
+    Dim theRef As Variant
+    Dim i As Long
+     
+    ' Reference Name: DiskQuotaTypeLibrary
+    strGUID = "{7988B57C-EC89-11CF-9C00-00AA00A14F56}"
+    Sheets("Summary Tables").Select
+    Range("X30").Select
+    ActiveCell.FormulaR1C1 = "DiskQuota - Run InkEdit"
+    
+    
+     'Set to continue in case of error
+    On Error Resume Next
+     
+     'Remove any missing references
+'    For i = ThisWorkbook.VBProject.References.Count To 1 Step -1
+'        Set theRef = ThisWorkbook.VBProject.References.Item(i)
+'        If theRef.IsBroken = True Then
+'            ThisWorkbook.VBProject.References.Remove theRef
+'        End If
+'    Next i
+     
+    Err.Clear
+     
+     'Add the reference
+    ThisWorkbook.VBProject.References.AddFromGuid _
+    GUID:=strGUID, Major:=1, Minor:=0
+     
+    Select Case Err.Number
+    Case Is = 32813
+         'Reference already in use.  No action necessary
+    Case Is = vbNullString
+         'Reference added without issue
+    Case Else
+         'An unknown error was encountered, so alert the user
+        MsgBox "A problem was encountered trying to" & vbNewLine _
+        & "add or remove a reference in this file" & vbNewLine & "Please check the " _
+        & "references in your VBA project!", vbCritical + vbOKOnly, "Error!"
+    End Select
+    
+     
+' Remove Microsoft InkEdit Control 1.0
+     Dim Reference As Object
+     For Each Reference In ThisWorkbook.VBProject.References
+           If Reference.Description = "Microsoft InkEdit Control 1.0" Then
+                 ThisWorkbook.VBProject.References.Remove Reference
+           End If
+     Next
+    
+    
+    On Error GoTo 0
+
+End Sub
+Sub AddInkEdit()
+     'Macro purpose:  To add a reference to the project using the GUID for the reference library
+     
+    Dim strGUID As String
+    Dim theRef As Variant
+    Dim i As Long
+     
+    ' Reference Name: INKEDLib
+    strGUID = "{8405D0DF-9FDD-4829-AEAD-8E2B0A18FEA4}"
+    Sheets("Summary Tables").Select
+    Range("X30").Select
+    ActiveCell.FormulaR1C1 = "InkEdit - Run DiskQuota"
+    
+     'Set to continue in case of error
+    On Error Resume Next
+     
+     'Remove any missing references
+'    For i = ThisWorkbook.VBProject.References.Count To 1 Step -1
+'        Set theRef = ThisWorkbook.VBProject.References.Item(i)
+'        If theRef.IsBroken = True Then
+'            ThisWorkbook.VBProject.References.Remove theRef
+'        End If
+'    Next i
+     
+    Err.Clear
+     
+     'Add the reference
+    ThisWorkbook.VBProject.References.AddFromGuid _
+    GUID:=strGUID, Major:=1, Minor:=0
+     
+    Select Case Err.Number
+    Case Is = 32813
+         'Reference already in use.  No action necessary
+    Case Is = vbNullString
+         'Reference added without issue
+    Case Else
+         'An unknown error was encountered, so alert the user
+        MsgBox "A problem was encountered trying to" & vbNewLine _
+        & "add or remove a reference in this file" & vbNewLine & "Please check the " _
+        & "references in your VBA project!", vbCritical + vbOKOnly, "Error!"
+    End Select
+    
+     
+' Remove Microsoft Disk Quota Type Library
+     Dim Reference As Object
+     For Each Reference In ThisWorkbook.VBProject.References
+           If Reference.Description = "Microsoft Disk Quota Type Library" Then
+                 ThisWorkbook.VBProject.References.Remove Reference
+           End If
+     Next
+    
+    
+    On Error GoTo 0
+
+End Sub
+
+
+Sub Display_GUID_Info()
+
+'PURPOSE: Displays GUID information for each active Object Library reference in the VBA project
+'SOURCE: www.TheSpreadsheetGuru.com
+
+    Dim Ref As Reference
+
+'Loop Through Each Active Reference (Displays in Immediate Window [ctrl + g])
+
+  For Each Ref In ThisWorkbook.VBProject.References
+
+    Debug.Print "Reference Name: ", Ref.Name
+
+    Debug.Print "Path: ", Ref.FullPath
+
+    Debug.Print "GUID: " & Ref.GUID
+
+    Debug.Print "Version: " & Ref.Major & "." & Ref.Minor
+
+    Debug.Print " "
+
+  Next Ref
+
+End Sub
