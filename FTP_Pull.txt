@@ -1,0 +1,164 @@
+Option Explicit
+
+
+Private Const FTP_TRANSFER_TYPE_UNKNOWN     As Long = 0
+Private Const INTERNET_FLAG_RELOAD          As Long = &H80000000
+
+Private Declare PtrSafe Function InternetOpenA Lib "wininet.dll" ( _
+    ByVal sAgent As String, _
+    ByVal lAccessType As Long, _
+    ByVal sProxyName As String, _
+    ByVal sProxyBypass As String, _
+    ByVal lFlags As Long) As Long 'Long
+
+Private Declare PtrSafe Function InternetConnectA Lib "wininet.dll" ( _
+    ByVal hInternetSession As Long, _
+    ByVal sServerName As String, _
+    ByVal nServerPort As Long, _
+    ByVal sUsername As String, _
+    ByVal sPassword As String, _
+    ByVal lService As Long, _
+    ByVal lFlags As Long, _
+    ByVal lcontext As Long) As Long
+
+Private Declare PtrSafe Function FtpGetFileA Lib "wininet.dll" ( _
+    ByVal hConnect As Long, _
+    ByVal lpszRemoteFile As String, _
+    ByVal lpszNewFile As String, _
+    ByVal fFailIfExists As Long, _
+    ByVal dwFlagsAndAttributes As Long, _
+    ByVal dwFlags As Long, _
+    ByVal dwContext As Long) As Long
+
+Private Declare PtrSafe Function InternetCloseHandle Lib "wininet" ( _
+    ByVal hInet As Long) As Long
+
+Sub FtpDownload(ByVal strRemoteFile As String, ByVal strLocalFile As String, ByVal strHost As String, ByVal lngPort As Long, ByVal strUser As String, ByVal strPass As String)
+    'usage
+    'FtpDownload "/TEST/test.html", "c:\test.html", "ftp.server.com", 21, "user", "password"
+    Dim hOpen   As Long
+    Dim hConn   As Long
+
+    hOpen = InternetOpenA("FTPGET", 1, vbNullString, vbNullString, 1)
+    hConn = InternetConnectA(hOpen, strHost, lngPort, strUser, strPass, 1, 0, 2)
+
+    If FtpGetFileA(hConn, strRemoteFile, strLocalFile, 1, 0, FTP_TRANSFER_TYPE_UNKNOWN Or INTERNET_FLAG_RELOAD, 0) Then
+        Debug.Print "done"
+    Else
+        Debug.Print "fail"
+    End If
+
+    InternetCloseHandle hConn
+    InternetCloseHandle hOpen
+
+End Sub
+
+Sub GetWindFcst_dnvgl_ftp()
+
+    Dim strFcstDate As String
+    Dim strLocalPath As String
+    Dim strLocalFile As String
+    Dim strLocalFileSheet As String
+    Dim strHostURL As String
+    Dim strHostPath As String
+    Dim strHostFile As String
+    Dim strUserName As String
+    Dim strPassword As String
+    Dim strThisBook As String
+    Dim strthisSheet As String
+    Dim filetoopen As String
+    Dim lastrow As Long
+        
+    strFcstDate = Format(Date, "YYYYMMDD")
+    strThisBook = ActiveWorkbook.Name
+    
+    strthisSheet = "Wind Fcst - dnvgl"
+    Sheets(strthisSheet).Visible = True
+    Sheets(strthisSheet).Select
+    
+' Set today's date (date of forecast)
+    Range("B4").Select
+    ActiveCell.FormulaR1C1 = "=NOW()"
+    Selection.Copy
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Application.CutCopyMode = False
+    
+
+' ----- Download Xtrader Forecast File -----
+
+' Log-In Credentials
+    strUserName = "***"
+    strPassword = "***"
+
+' ----- ERCOT Total wind forecast file -----
+
+
+
+' Local File
+    strLocalPath = "X:\Trading\x-Market Fundamentals\x-Haynes\Workpapers\ERCOT\Daily Reports"
+    strLocalFile = "ERCOT_Aggregate_Zonal_Wind_" & strFcstDate & "_0600.csv"
+    strLocalFileSheet = "RCOT_Aggregate_Zonal_Win"
+
+    If Dir(strLocalPath & strLocalFile) <> "" Then
+    SetAttr strLocalPath & strLocalFile, vbNormal
+    Kill strLocalPath & strLocalFile
+    End If
+    
+' Host File
+    strHostURL = "ftp.forecasting.com"
+    strHostPath = "/ERCOT/Wind_Forecasts/"
+    strHostFile = strLocalFile
+
+    Call FtpDownload("/" & strHostPath & strHostFile, strLocalPath & strLocalFile, strHostURL, 21, strUserName, strPassword)
+    
+    Sheets(strthisSheet).Select
+    Range("C20:O500").Select
+    Selection.ClearContents
+    
+    filetoopen = strLocalPath & strLocalFile
+    
+    Workbooks.Open (filetoopen)
+        
+    Sheets(strLocalFileSheet).Activate
+    Range("A2").Select
+    Range(Selection, ActiveCell.SpecialCells(xlLastCell)).Select
+    Selection.Copy
+    
+    Windows(strThisBook).Activate
+    Sheets(strthisSheet).Select
+    Range("C7").Select
+    Selection.PasteSpecial Operation:=xlNone, SkipBlanks _
+            :=False, Transpose:=False
+    
+    Application.CutCopyMode = False
+    Application.DisplayAlerts = False
+    
+    Range("C7").Select
+    Range(ActiveCell, ActiveCell.End(xlDown)).Select
+    Selection.TextToColumns Destination:=Range("C7"), DataType:=xlDelimited, _
+    TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=False, _
+    Semicolon:=True, Comma:=False, Space:=False, Other:=False, FieldInfo _
+    :=Array(Array(1, 1), Array(2, 1), Array(3, 1), Array(4, 1), Array(5, 1), Array(6, 1), _
+    Array(7, 1), Array(8, 1), Array(9, 1), Array(10, 1), Array(11, 1), Array(12, 1), Array(13, 1 _
+    )), TrailingMinusNumbers:=True
+
+    ' ---- Auto-Fill Formulas ----
+    lastrow = Range("C12").End(xlDown).Row
+    With Range("A12:B12")
+        .AutoFill Destination:=Range("A12:B" & lastrow)
+    End With
+    
+    Dim pt As PivotTable
+    For Each pt In Sheets(strthisSheet).PivotTables
+         pt.PivotCache.Refresh
+    Next pt
+
+    Workbooks(strLocalFile).Close False
+    
+    Application.DisplayAlerts = True
+    
+    Range("A1").Select
+    Sheets(strthisSheet).Visible = False
+    
+End Sub
